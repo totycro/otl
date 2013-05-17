@@ -47,7 +47,6 @@ def show_instance(instance):
 		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-100) + 50,
 						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-100) + 50)
 
-
 	for c in instance.customers:
 		gui.points.append(translate_point(c.pos))
 

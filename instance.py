@@ -44,24 +44,23 @@ class Instance:
 		self.num_customers = int(head[2])
 		self.num_depots = int(head[3])
 
-		print(self)
-
 		self.depots= []
-		depot_type = namedtuple("Depot", ["pos", "max_route_duration", "max_vehicle_load"])
+		depot_type = namedtuple("Depot", ["id", "pos", "max_route_duration", "max_vehicle_load"])
 
 		for d in range(self.num_depots):
 			line = get_next_line_data()
 			# line is D Q
 			self.depots.append( {"pos": None, "max_route_duration": int(line[0]), "max_vehicle_load": int(line[1])} )
 
-		customer_type = namedtuple("Customer", ["pos", "service_duration", "demand" ])
+		customer_type = namedtuple("Customer", ["id", "pos", "service_duration", "demand" ])
 
 		self.customers = []
 
 		for c in range(self.num_customers):
 			line = get_next_line_data()
 			# line is i x y d q f a list e l
-			self.customers.append( customer_type(pos=(int(line[1]), int(line[2])),
+			self.customers.append( customer_type(id=c,
+			                                     pos=(int(line[1]), int(line[2])),
 			                                     service_duration=int(line[3]),
 			                                     demand=int(line[4])) )
 
@@ -70,6 +69,7 @@ class Instance:
 			# line is i x y d q f a list e l, but for depot
 			data = self.depots[d]
 			data["pos"] = ( int(line[1]), int(line[2]) )
+			data["id"] = d
 			self.depots[d] = depot_type(**data)
 
 		try:
@@ -90,14 +90,21 @@ class Instance:
 
 
 
+		print(self)
+
 
 
 	def __str__(self):
 		s = ""
-		s += "Instance\t%s\n" % self.file
-		s += "Vehicles\t%s\n" % self.num_vehicles
-		s += "Customers\t%s\n" % self.num_customers
+		s += "Instance\t%s" % self.file
+		s += "\n"
+		s += "Vehicles\t%s" % self.num_vehicles
+		s += "\n"
+		s += "Customers\t%s" % self.num_customers
+		s += "\n"
 		s += "Depots\t\t%s" % self.num_depots
+		s += "\n"
+		s += "Min/Max\t\t%s/%s" % ( self.min_point, self.max_point )
 		return s
 
 

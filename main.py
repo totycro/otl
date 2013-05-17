@@ -23,9 +23,34 @@
 
 
 import sys
+import random
 
 from instance import Instance
 from gui import show_instance
+
+
+
+def test_domain():
+	instance = Instance("instances/p01")
+	genotype = [ (0,0), (40, 20), (20, 40), (50, 50) ]
+
+	print("\nRunning test_domain..")
+	from domainalgo import construct_route, get_closest_depots
+
+	rand = random.Random(2)
+
+
+	depots = get_closest_depots(instance, genotype, rand)
+
+	assert depots[0].id == 0
+	assert depots[1].id == 2
+	assert depots[2].id == 1
+	assert depots[3].id == 3
+
+	print('Passed.\n')
+
+	r = construct_route(instance, genotype, rand)
+
 
 
 if __name__ == "__main__":
@@ -33,8 +58,13 @@ if __name__ == "__main__":
 		print("You need to specify an instance file.");
 		sys.exit(1)
 
+	if '-t' in sys.argv or '--test' in sys.argv:
+		test_domain()
+		sys.exit(0)
+
 	inputfile = sys.argv[1]
 
 	instance = Instance(inputfile)
 
 	#show_instance(instance)
+
