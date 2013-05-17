@@ -21,6 +21,7 @@
 
 
 from collections import namedtuple
+import itertools
 
 
 class Instance:
@@ -80,6 +81,12 @@ class Instance:
 			raise Exception("Garbage at end of file")
 
 
+		def all_positions():
+			for c in itertools.chain(self.customers, self.depots):
+				yield c.pos
+
+		self.min_point = (min(x[0] for x in all_positions()), min(x[1] for x in all_positions()))
+		self.max_point = (max(x[0] for x in all_positions()), max(x[1] for x in all_positions()))
 
 
 

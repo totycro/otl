@@ -37,5 +37,4 @@ if __name__ == "__main__":
 
 	instance = Instance(inputfile)
 
-
-	show_instance(instance)
+	#show_instance(instance)

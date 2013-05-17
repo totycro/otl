@@ -26,14 +26,42 @@ import math
 import tkinter
 import tkinter.messagebox
 
+from instance import Instance
+
 
 def show_instance(instance):
 	root = tkinter.Tk()
 	gui = Gui(root)
+
+	assert isinstance(instance, Instance)
+
+	print(instance.min_point)
+	print(instance.max_point)
+
+	sizex = (instance.max_point[0] - instance.min_point[0])
+	sizey = (instance.max_point[1] - instance.min_point[1])
+
+
+
+	def translate_point(p):
+		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-100) + 50,
+						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-100) + 50)
+
+
+	for c in instance.customers:
+		gui.points.append(translate_point(c.pos))
+
+	for d in instance.depots:
+		gui.points2.append(translate_point(d.pos))
+
+	gui.redraw()
+
 	root.mainloop()
 	root.destroy()
 
 class Gui(tkinter.Frame):
+	HEIGHT=768
+	WIDTH=1024
 	def __init__(self, master):
 		tkinter.Frame.__init__(self, master)
 
@@ -55,8 +83,9 @@ class Gui(tkinter.Frame):
 
 		self.quitBtn = tkinter.Button(self.widgets_master, text="Quit", command=self.on_quit)
 		#self.quitBtn.pack({"side": "bottom"})
-		self.quitBtn.grid(row=btn_start_row+1, column=1)
+		self.quitBtn.grid(row=btn_start_row+1, column=2)
 
+		"""
 		self.clearBtn = tkinter.Button(self.widgets_master, text="Restart", command=self.on_restart)
 		#self.clearBtn.pack({"side": "bottom"})
 		self.clearBtn.grid(row=btn_start_row, column=1)
@@ -73,19 +102,24 @@ class Gui(tkinter.Frame):
 
 		self.randomBtn = tkinter.Button(self.widgets_master, text="Random", command=self.on_random)
 		self.randomBtn.grid(row=btn_start_row+1, column=2)
+		"""
 
-		self.label = tkinter.Label(self.widgets_master, text="Presentation of Beneath-Beyond")
+		self.label = tkinter.Label(self.widgets_master, text="Presentation of pso-mdvrp")
 		self.label.grid(row=1, column=0, columnspan=columns_num)
 
 		self.label2 = tkinter.Label(self.widgets_master, text="")
 		self.label2.grid(row=5, column=0, columnspan=columns_num)
 
 		# canvas
-		self.canvas = tkinter.Canvas(self.widgets_master, width=1024, height=768, bg='white')
+		self.canvas = tkinter.Canvas(self.widgets_master, width=self.WIDTH, height=self.HEIGHT, bg='white')
 		self.canvas.grid(row=0, columnspan=columns_num)
 
 		self.canvas.bind("<ButtonPress-1>", self.on_click)
 		self.canvas.bind("<Motion>", self.on_motion)
+
+		def q(*args, **kwargs):
+			self.on_quit()
+		self.bind_all("<Control-q>", q)
 
 		self.pack()
 
