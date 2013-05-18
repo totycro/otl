@@ -51,7 +51,7 @@ def test_domain():
 
 	print('Passed.\n')
 
-	instance0 = Instance("instances/p01")
+	instance0 = Instance("instances/p13")
 
 	pso(instance0, rand, Config(num_particles=3))
 

@@ -25,7 +25,7 @@ from pprint import pprint
 import random as random_module
 
 from instance import Instance
-from domainalgo import create_starting_solution, get_objective_value, construct_routes, two_opt
+from domainalgo import create_starting_solution, get_objective_value, construct_routes, two_opt, print_routes
 from gui import show_routes
 
 
@@ -77,7 +77,7 @@ def pso(instance, rand, config):
 
 			# possibly test phenotype better by randomising construction
 			r = construct_routes(instance, genotype)
-			r_opt = r# two_opt(r)
+			r_opt =  two_opt(r)
 
 			print("Sol",i,"obj naked:", get_objective_value(r), "; obj opt:", get_objective_value(r_opt))
 
@@ -98,7 +98,7 @@ def pso(instance, rand, config):
 				gbest_sol = pbest[gbest[0]][0]
 				pbest_sol = pbest[i][0]
 
-				print('move to', pbest_sol, ' and ', gbest_sol)
+				#print('move to', pbest_sol, ' and ', gbest_sol)
 
 				accel = 0.3
 				# velocity is a 2-dim vector for each staring location
@@ -113,7 +113,8 @@ def pso(instance, rand, config):
 						accel * rand.random() * (gbest_sol[j][1] - individual[j][1])
 
 
-			show_routes(instance, r_opt)
+		show_routes(instance, best_phenotype)
+		#print_routes(r_opt)
 
 
 

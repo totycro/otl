@@ -227,7 +227,7 @@ class Gui(tkinter.Frame):
 
 		colors = "blue", "green", "brown", "pink", "yellow"
 		for edge in self.edges:
-			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=colors[edge[2]], width=3.0)
+			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=colors[edge[2]%len(colors)], width=3.0)
 
 	def on_restart(self):
 		ans = tkinter.messagebox.askyesno("Clear points?", "Clear points as well?")

@@ -21,6 +21,7 @@
 
 from pprint import pprint
 import heapq
+import sys
 
 from instance import Instance
 
@@ -43,6 +44,7 @@ def get_objective_value(routes):
 
 
 def create_starting_solution(instance, rand):
+	"""Creates initial genotypes"""
 	assert isinstance(instance, Instance)
 	return list(
 	  ( rand.randint(instance.min_point[0], instance.max_point[0]+1),
@@ -53,8 +55,7 @@ def create_starting_solution(instance, rand):
 
 def construct_routes(instance, genotype):
 	"""Create phenotype from genotype."""
-	# TODO: additional constraints
-
+	assert isinstance(instance, Instance)
 	# genotype contains base points
 
 	# find closest depots
@@ -62,6 +63,8 @@ def construct_routes(instance, genotype):
 
 	routes = list([i] for i in vehicle_depots ) # list of routes with starting state
 
+	vehicle_loads = [0] * len(routes)
+	vehicle_route_duration = [0] * len(routes)
 
 	# multiple nearest neighbor:
 	# construct all routes at the same time. connect where dist to base point
@@ -70,27 +73,43 @@ def construct_routes(instance, genotype):
 	customers_to_visit = set(instance.customers)
 	customers_visited = set()
 
-
 	neighbors_per_vehicle = [[]] * len(routes) # heap of neighbors per vehicle sorted by distance
 
-	# init neightbors per vehicle
 
-	def calculate_neighbors_per_vehicle(i):
+	def calculate_neighbors_per_vehicle(vehicle):
 		"""Calculate heuristic value of all open customers of vehicle i, considering cur loc and genotype, return as heap"""
-		route = routes[i]
+		route = routes[vehicle]
+
+		# constraints per depot (but same in file usually)
+		max_vehicle_load = route[0].max_vehicle_load
+		max_route_duration = route[0].max_route_duration
 
 		#print('veh ', i, route[-1], genotype[i])
 		l = []
 		for customer in customers_to_visit:
+
+			if vehicle_loads[vehicle] + customer.demand > max_vehicle_load:
+				continue # too much to carry
+
 			# dist from cur pos and from base point (genotype)
-			dist_value = dist_squared(route[-1].pos, customer.pos) + dist_squared(genotype[i], customer.pos)
-			heapq.heappush(l, (dist_value, i, customer)) # add vehicle id, makes it easier later
+			route_dist = dist(route[-1].pos, customer.pos)
+
+			# check if we go there, then home, if we're still in the max allowed time
+			if vehicle_route_duration[vehicle] + route_dist + dist(customer.pos, route[0].pos) > max_route_duration:
+				continue # can't do this
+
+
+			dist_value = route_dist + dist(genotype[vehicle], customer.pos)
+			heapq.heappush(l, (dist_value, route_dist, vehicle, customer)) # add vehicle id, makes it easier later
 
 		#pprint(l)
 		#print()
+		if not l:
+			l.append((sys.maxsize,)) # HACK: never the least value
 		return l
 
 
+	# init neightbors per vehicle
 	for i in range(len(routes)):
 		neighbors_per_vehicle[i] = calculate_neighbors_per_vehicle(i)
 
@@ -102,17 +121,31 @@ def construct_routes(instance, genotype):
 	pprint(min([i[0] for i in neighbors_per_vehicle]))
 	"""
 
-	while customers_to_visit:
-		_, vehicle, customer = min([i[0] for i in neighbors_per_vehicle])
-		neighbors_per_vehicle[vehicle] = calculate_neighbors_per_vehicle(vehicle)
+	while customers_to_visit:		"""
+		pprint(customers_to_visit)
+		print_routes(routes)
+		pprint(neighbors_per_vehicle)
+		pprint(vehicle_loads)
+		pprint(vehicle_route_duration)
+		"""
 
-		# customer might already have been visited
+		candidate = min([i[0] for i in neighbors_per_vehicle])
+		if candidate[0] == sys.maxsize:
+			# TODO: what to do in case of no valid solution?
+			break
+
+		_, route_dist, vehicle, customer = candidate
+		neighbors_per_vehicle[vehicle] = calculate_neighbors_per_vehicle(vehicle)
+		# customer might already have been visited by other vehicle, we don't drop these values from other lists
 		if customer not in customers_visited:
 			# use it
 			routes[vehicle].append(customer)
 			customers_to_visit.remove(customer)
 			customers_visited.add(customer)
 			#print('veh', vehicle, ' serves ', customer)
+
+			vehicle_loads[vehicle] += customer.demand
+			vehicle_route_duration[vehicle] += route_dist
 
 	for route in routes:
 		route.append(route[0])
@@ -121,7 +154,7 @@ def construct_routes(instance, genotype):
 
 
 def _get_closest_depots(instance, genotype):
-	"""Returns the closest depots for the genotype values. Currently unrandomized"""
+	"""Returns the closest depots for the genotype values. Currently unrandomized."""
 	closest_depots=[]
 
 	for vehicle_base in genotype:
@@ -138,6 +171,9 @@ def _get_closest_depots(instance, genotype):
 
 def two_opt(routes):
 	"""Do exhaustive 2-opt, return new route"""
+
+	# NOTE: ensure not to introduce a constraint violation.
+	# (doesn't change load)
 	def do_route(route): # return new route
 		# don't change depot
 		for i in range(0, len(route)-2):
