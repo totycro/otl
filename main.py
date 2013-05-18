@@ -24,23 +24,24 @@
 
 import sys
 import random
+import time
 
 from instance import Instance
-from gui import show_instance
+from gui import show_instance, show_routes
 
 
 
 def test_domain():
-	instance = Instance("instances/p01")
+	instance1 = Instance("instances/p01")
 	genotype = [ (0,0), (40, 20), (20, 40), (50, 50) ]
 
 	print("\nRunning test_domain..")
-	from domainalgo import construct_route, get_closest_depots
+	from domainalgo import construct_routes, get_closest_depots, create_starting_solution, get_objective_value, two_opt, print_routes
 
 	rand = random.Random(2)
 
 
-	depots = get_closest_depots(instance, genotype, rand)
+	depots = get_closest_depots(instance1, genotype, rand)
 
 	assert depots[0].id == 0
 	assert depots[1].id == 2
@@ -49,7 +50,22 @@ def test_domain():
 
 	print('Passed.\n')
 
-	r = construct_route(instance, genotype, rand)
+	instance0 = Instance("instances/p01")
+
+	genotype = create_starting_solution(instance0, rand)
+
+	r = construct_routes(instance0, genotype, rand)
+
+	show_routes(instance0, r)
+	print_routes(r)
+	r = two_opt(r)
+	r = two_opt(r)
+	r = two_opt(r)
+	print_routes(r)
+
+	print(get_objective_value(r))
+
+	show_routes(instance0, r)
 
 
 

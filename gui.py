@@ -28,24 +28,44 @@ import tkinter.messagebox
 
 from instance import Instance
 
-
 def show_instance(instance):
+	root, gui = _show_instance(instance)
+	root.mainloop()
+	root.destroy()
+
+def show_routes(instance, routes):
+	root, gui = _show_instance(instance)
+	translate_point = get_translate_point(instance)
+	for route_num, route in enumerate(routes):
+		route = route[:]
+		route.append(route[0])
+		for i in range(len(route)):
+			if i == len(route)-1:
+				break
+			gui.edges.append( (translate_point(route[i].pos), translate_point(route[i+1].pos), route_num) )
+	gui.redraw()
+
+	root.mainloop()
+	root.destroy()
+
+
+def get_translate_point(instance):
+	sizex = (instance.max_point[0] - instance.min_point[0])
+	sizey = (instance.max_point[1] - instance.min_point[1])
+	def translate_point(p):
+		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-100) + 50,
+						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-100) + 50)
+	return translate_point
+
+
+def _show_instance(instance):
 	root = tkinter.Tk()
 	gui = Gui(root)
 
 	assert isinstance(instance, Instance)
 
-	print(instance.min_point)
-	print(instance.max_point)
 
-	sizex = (instance.max_point[0] - instance.min_point[0])
-	sizey = (instance.max_point[1] - instance.min_point[1])
-
-
-
-	def translate_point(p):
-		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-100) + 50,
-						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-100) + 50)
+	translate_point = get_translate_point(instance)
 
 	for c in instance.customers:
 		gui.points.append(translate_point(c.pos))
@@ -55,8 +75,8 @@ def show_instance(instance):
 
 	gui.redraw()
 
-	root.mainloop()
-	root.destroy()
+	return root, gui
+
 
 class Gui(tkinter.Frame):
 	HEIGHT=768
@@ -74,6 +94,7 @@ class Gui(tkinter.Frame):
 		self.algo = None
 		self.points = []
 		self.points2 = []
+		self.edges = []
 		self.stepCnt = 0
 
 		# buttons
@@ -202,7 +223,11 @@ class Gui(tkinter.Frame):
 			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill="red")
 		for p in self.points2:
 			sz = 4
-			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill="blue")
+			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill="black")
+
+		colors = "blue", "green", "brown", "pink", "yellow"
+		for edge in self.edges:
+			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=colors[edge[2]], width=3.0)
 
 	def on_restart(self):
 		ans = tkinter.messagebox.askyesno("Clear points?", "Clear points as well?")
