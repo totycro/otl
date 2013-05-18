@@ -34,6 +34,7 @@ def print_routes(routes):
 	print()
 
 def get_objective_value(routes):
+	"""Calculate objective value for a set of routes."""
 	obj_value = 0
 	for route in routes:
 		for i in range(len(route)-1):
@@ -50,13 +51,14 @@ def create_starting_solution(instance, rand):
 
 
 
-def construct_routes(instance, genotype, rand):
+def construct_routes(instance, genotype):
+	"""Create phenotype from genotype."""
 	# TODO: additional constraints
 
 	# genotype contains base points
 
 	# find closest depots
-	vehicle_depots = get_closest_depots(instance, genotype, rand)
+	vehicle_depots = _get_closest_depots(instance, genotype)
 
 	routes = list([i] for i in vehicle_depots ) # list of routes with starting state
 
@@ -73,8 +75,8 @@ def construct_routes(instance, genotype, rand):
 
 	# init neightbors per vehicle
 
-	"""Calculate heuristic value of all open customers of vehicle i, considering cur loc and genotype, return as heap"""
 	def calculate_neighbors_per_vehicle(i):
+		"""Calculate heuristic value of all open customers of vehicle i, considering cur loc and genotype, return as heap"""
 		route = routes[i]
 
 		#print('veh ', i, route[-1], genotype[i])
@@ -94,9 +96,11 @@ def construct_routes(instance, genotype, rand):
 
 	# pick best one
 
+	"""
 	pprint([i[0] for i in neighbors_per_vehicle])
 	print()
 	pprint(min([i[0] for i in neighbors_per_vehicle]))
+	"""
 
 	while customers_to_visit:
 		_, vehicle, customer = min([i[0] for i in neighbors_per_vehicle])
@@ -108,7 +112,7 @@ def construct_routes(instance, genotype, rand):
 			routes[vehicle].append(customer)
 			customers_to_visit.remove(customer)
 			customers_visited.add(customer)
-			print('veh', vehicle, ' serves ', customer)
+			#print('veh', vehicle, ' serves ', customer)
 
 	for route in routes:
 		route.append(route[0])
@@ -116,8 +120,8 @@ def construct_routes(instance, genotype, rand):
 	return routes
 
 
-"""Returns the closest depots for the genotype values. Currently unrandomized"""
-def get_closest_depots(instance, genotype, rand):
+def _get_closest_depots(instance, genotype):
+	"""Returns the closest depots for the genotype values. Currently unrandomized"""
 	closest_depots=[]
 
 	for vehicle_base in genotype:
@@ -132,9 +136,8 @@ def get_closest_depots(instance, genotype, rand):
 
 
 
-
-"""Do exhaustive 2-opt, return new route"""
 def two_opt(routes):
+	"""Do exhaustive 2-opt, return new route"""
 	def do_route(route): # return new route
 		# don't change depot
 		for i in range(0, len(route)-2):
@@ -148,14 +151,12 @@ def two_opt(routes):
 				   ( dist_squared(u_1, v_1) + dist_squared(u_2, v_2) ):
 					# is better, put v_1 after u_1, then in reverse order until u_2, then v_2
 
-					# do in place somehow?
-					print(i, j)
-					print([r.id for r in route])
+					# TODO: do in place?
 					route_prime = route[:i+1] + list(reversed(route[i+1:j+1])) + route[j+1:]
-					print([r.id for r in route_prime])
 					return do_route(route_prime)
 
 		return route # nothing found
 
 	return list(do_route(route) for route in routes)
+
 

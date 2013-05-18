@@ -27,6 +27,7 @@ import random
 import time
 
 from instance import Instance
+from pso import pso, Config
 from gui import show_instance, show_routes
 
 
@@ -36,12 +37,12 @@ def test_domain():
 	genotype = [ (0,0), (40, 20), (20, 40), (50, 50) ]
 
 	print("\nRunning test_domain..")
-	from domainalgo import construct_routes, get_closest_depots, create_starting_solution, get_objective_value, two_opt, print_routes
+	from domainalgo import construct_routes, _get_closest_depots, create_starting_solution, get_objective_value, two_opt, print_routes
 
 	rand = random.Random(2)
 
 
-	depots = get_closest_depots(instance1, genotype, rand)
+	depots = _get_closest_depots(instance1, genotype)
 
 	assert depots[0].id == 0
 	assert depots[1].id == 2
@@ -52,20 +53,22 @@ def test_domain():
 
 	instance0 = Instance("instances/p01")
 
+	pso(instance0, rand, Config(num_particles=3))
+
+	"""
 	genotype = create_starting_solution(instance0, rand)
 
-	r = construct_routes(instance0, genotype, rand)
+	r = construct_routes(instance0, genotype)
 
 	show_routes(instance0, r)
 	print_routes(r)
-	r = two_opt(r)
-	r = two_opt(r)
 	r = two_opt(r)
 	print_routes(r)
 
 	print(get_objective_value(r))
 
 	show_routes(instance0, r)
+	"""
 
 
 
