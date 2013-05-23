@@ -26,18 +26,18 @@ import random as random_module
 
 from instance import Instance
 from domainalgo import create_starting_solution, get_objective_value, construct_routes, two_opt, print_routes
-from gui import show_routes
+from gui import show_routes, show_genotypes
 from utils import pprint_list_of_list_of_floats, pprint_list_of_floats
 
 from utils import pprint_list_of_list_of_floats as pll, pprint_list_of_floats as pl
 
 class Config:
-	DURATION_EXCEEDED_PENALTY = 100
-	LOAD_EXCEEDED_PENALTY = 100
-	NUM_PARTICLES = 8
+	DURATION_EXCEEDED_PENALTY = 1000
+	LOAD_EXCEEDED_PENALTY = 1000
+	NUM_PARTICLES = 20
 
 	REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD = 0.75
-	NEARBY_CUSTOMERS_TO_CHECK = 15
+	NEARBY_CUSTOMERS_TO_CHECK = 140
 
 	def __init__(self, iterations):
 		self.iterations = iterations
@@ -52,7 +52,7 @@ class Phenotype:
 		self.load_penalties = load_penalties
 
 	def local_search(self, config, optimal=False):
-		self.routes = two_opt(self.routes, 5 if not optimal else -1) # limit to 5 exchanges
+		self.routes = two_opt(self.routes, 20 if not optimal else -1) # limit to 5 exchanges
 		self.route_cost, self.route_penalties = get_objective_value(self.routes, config)
 
 	@property
@@ -127,6 +127,16 @@ def pso(instance, rand, config):
 					print_routes(best_phenotype)
 					#show_routes(instance, best_phenotype)
 
+		"""
+		print('invididuals:')
+		for i, ind in enumerate(population):
+			print("indiv: ", end="");pprint_list_of_floats(ind)
+			print("accel: ", end="");pprint_list_of_floats(individual_velocities[i])
+
+		print('\nbest:', end="")
+		pprint_list_of_floats(pbest[gbest[0]][0])
+		"""
+
 		# update velocities
 		#if it == 8: import pdb ; pdb.set_trace()
 		for individual_id, location_velocities in enumerate(individual_velocities):
@@ -136,7 +146,7 @@ def pso(instance, rand, config):
 
 			#print('move to', pbest_sol, ' and ', gbest_sol)
 
-			accel =.2
+			accel = 0.4
 			accel_g = .3 * accel
 			accel_p = .2 * accel
 
@@ -158,14 +168,7 @@ def pso(instance, rand, config):
 
 
 		if False or it % 5 == 0 and it != 0:
-			#show_routes(instance, best_phenotype)
+			show_genotypes(instance, population)
+			show_routes(instance, best_phenotype)
 			pass
-
-
-
-
-
-
-
-
 

@@ -22,6 +22,7 @@
 import collections
 import random
 import math
+from pprint import pprint
 
 import tkinter
 import tkinter.messagebox
@@ -62,12 +63,20 @@ def show_routes(instance, phenotype):
 
 	_loop(root)
 
+def show_genotypes(instance, genotypes):
+	root, gui = _show_instance(instance)
+	translate_point, inverse_translate_point = get_translate_point(instance)
+	#import pdb ; pdb.set_trace()
+	gui.genotype_point_sets.extend([[translate_point(p) for p in x] for x in genotypes])
+	gui.redraw()
+	_loop(root)
+
 
 def get_translate_point(instance):
 	sizex = (instance.max_point[0] - instance.min_point[0])
 	sizey = (instance.max_point[1] - instance.min_point[1])
 
-	padding_factor = .8
+	padding_factor = .2
 	padding_factor *= .5 # counted twice below
 
 	padding_width = Gui.WIDTH * padding_factor
@@ -125,6 +134,7 @@ class Gui(tkinter.Frame):
 		self.points = []
 		self.points2 = []
 		self.vehicle_points = []
+		self.genotype_point_sets = []
 		self.edges = []
 		self.stepCnt = 0
 
@@ -260,6 +270,11 @@ class Gui(tkinter.Frame):
 		for i, p in enumerate(self.vehicle_points):
 			sz = 4
 			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill=self.get_color(i))
+
+		for i, p_set in enumerate(self.genotype_point_sets):
+			sz = 4
+			for p in p_set:
+				self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill=self.get_color(i))
 
 		for edge in self.edges:
 			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=self.get_color(edge[2]), width=3.0)

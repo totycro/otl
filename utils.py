@@ -50,7 +50,7 @@ def pprint_list_of_floats(l1):
 		for t in l1:
 			#print("now:")
 			#pprint(t)
-			print("(%04.1f, %04.1f), " % (float(t[0]), float(t[1])), end="");
+			print("(%05.1f, %05.1f), " % (float(t[0]), float(t[1])), end="");
 
 		print("]", end="")
 		print(",", end="\n");

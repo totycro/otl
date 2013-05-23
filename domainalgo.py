@@ -30,7 +30,7 @@ from utils import dist, dist_squared
 
 def print_routes(phenotype):
 	routes = phenotype.routes
-	print("Routes (obj:%s; pen:%s):"%(phenotype.obj_value, phenotype.penalties))
+	print("Routes (obj:%s; pen:%s):"%(phenotype.route_cost, phenotype.penalties))
 	for i, route in enumerate(routes):
 		print(i, [r.id for r in route])
 	print()
@@ -124,7 +124,6 @@ def construct_routes(instance, genotype, config):
 			if customer in data.customers_visited:
 				dead_customers += 1
 				continue
-
 
 			route_penalty = 0
 			load_penalty = 0
