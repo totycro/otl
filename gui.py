@@ -26,16 +26,27 @@ import math
 import tkinter
 import tkinter.messagebox
 
-from instance import Instance
-
-def show_instance(instance):
-	root, gui = _show_instance(instance)
+def _loop(root):
+	def poll(): # this makes ^C be recognised way faster (somehow!)
+		root.after(500, poll)
+	root.after(500, poll)
 	root.mainloop()
 	root.destroy()
 
-def show_routes(instance, routes):
+
+def show_instance(instance):
 	root, gui = _show_instance(instance)
-	translate_point = get_translate_point(instance)
+	_loop(root)
+
+
+def show_routes(instance, phenotype):
+	from pso import Phenotype
+	assert isinstance(phenotype, Phenotype)
+
+	routes = phenotype.routes
+
+	root, gui = _show_instance(instance)
+	translate_point, inverse_translate_point = get_translate_point(instance)
 	for route_num, route in enumerate(routes):
 		route = route[:]
 		route.append(route[0])
@@ -43,29 +54,48 @@ def show_routes(instance, routes):
 			if i == len(route)-1:
 				break
 			gui.edges.append( (translate_point(route[i].pos), translate_point(route[i+1].pos), route_num) )
+
+	for p in phenotype.genotype:
+		gui.vehicle_points.append( translate_point(p) )
+
 	gui.redraw()
 
-	root.mainloop()
-	root.destroy()
+	_loop(root)
 
 
 def get_translate_point(instance):
 	sizex = (instance.max_point[0] - instance.min_point[0])
 	sizey = (instance.max_point[1] - instance.min_point[1])
+
+	padding_factor = .8
+	padding_factor *= .5 # counted twice below
+
+	padding_width = Gui.WIDTH * padding_factor
+	padding_height = Gui.HEIGHT * padding_factor
+
 	def translate_point(p):
-		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-100) + 50,
-						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-100) + 50)
-	return translate_point
+		nonlocal padding_width, padding_height
+		return (((p[0]-instance.min_point[0]) / sizex) * (Gui.WIDTH-2*padding_width) + padding_width,
+						((p[1]-instance.min_point[1]) / sizey) * (Gui.HEIGHT-2*padding_height) + padding_height)
+	def inverse_translate_point(p):
+		nonlocal padding_width, padding_height
+		t = ((((p[0] - padding_width)/(Gui.WIDTH-2*padding_width) ) * sizex) + instance.min_point[0],
+		     (((p[1] - padding_height)/(Gui.HEIGHT-2*padding_height) ) * sizey) + instance.min_point[1])
+
+		return tuple(int(round(i)) for i in t)
+	return translate_point, inverse_translate_point
 
 
 def _show_instance(instance):
 	root = tkinter.Tk()
 	gui = Gui(root)
 
+	from instance import Instance
 	assert isinstance(instance, Instance)
 
-
-	translate_point = get_translate_point(instance)
+	translate_point, inverse_translate_point = get_translate_point(instance)
+	gui.inverse_translate_point = inverse_translate_point
+	gui.set_title(instance.file)
 
 	for c in instance.customers:
 		gui.points.append(translate_point(c.pos))
@@ -94,6 +124,7 @@ class Gui(tkinter.Frame):
 		self.algo = None
 		self.points = []
 		self.points2 = []
+		self.vehicle_points = []
 		self.edges = []
 		self.stepCnt = 0
 
@@ -124,7 +155,7 @@ class Gui(tkinter.Frame):
 		self.randomBtn.grid(row=btn_start_row+1, column=2)
 		"""
 
-		self.label = tkinter.Label(self.widgets_master, text="Presentation of pso-mdvrp")
+		self.label = tkinter.Label(self.widgets_master, text="")
 		self.label.grid(row=1, column=0, columnspan=columns_num)
 
 		self.label2 = tkinter.Label(self.widgets_master, text="")
@@ -141,6 +172,7 @@ class Gui(tkinter.Frame):
 			self.on_quit()
 		self.bind_all("<Control-q>", q)
 
+		self.set_title()
 		self.pack()
 
 		"""
@@ -225,9 +257,16 @@ class Gui(tkinter.Frame):
 			sz = 4
 			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill="black")
 
-		colors = "blue", "green", "brown", "pink", "yellow"
+		for i, p in enumerate(self.vehicle_points):
+			sz = 4
+			self.canvas.create_oval( p[0]-sz, p[1]-sz, p[0]+sz, p[1]+sz, fill=self.get_color(i))
+
 		for edge in self.edges:
-			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=colors[edge[2]%len(colors)], width=3.0)
+			self.canvas.create_line(edge[0][0], edge[0][1], edge[1][0], edge[1][1], fill=self.get_color(edge[2]), width=3.0)
+
+	def get_color(self, i):
+		colors = "blue", "green", "brown", "pink", "yellow", "black", "cyan", "maroon", "olive", "lime", "fuchsia", "silver", "magenta", "grey", "navy", "teal", "aqua"
+		return colors[i%len(colors)]
 
 	def on_restart(self):
 		ans = tkinter.messagebox.askyesno("Clear points?", "Clear points as well?")
@@ -237,5 +276,14 @@ class Gui(tkinter.Frame):
 		self.redraw()
 
 	def on_motion(self, event):
-		s = str((event.x, event.y)) + " " + str(self.obj_fun( ( event.x, event.y) ))
+		s = str((event.x, event.y))
+		if hasattr(self, "inverse_translate_point"):
+			s+= " " + str(self.inverse_translate_point( (event.x, event.y) ) )
+
 		self.label2.config(text=s)
+
+	def set_title(self, title=""):
+		to_add = ""
+		if title:
+			to_add = ": "+title
+		self.label.config(text="Presentation of pso-mdvrp"+to_add)

@@ -27,21 +27,51 @@ import random as random_module
 from instance import Instance
 from domainalgo import create_starting_solution, get_objective_value, construct_routes, two_opt, print_routes
 from gui import show_routes
+from utils import pprint_list_of_list_of_floats, pprint_list_of_floats
 
+from utils import pprint_list_of_list_of_floats as pll, pprint_list_of_floats as pl
 
 class Config:
+	DURATION_EXCEEDED_PENALTY = 100
+	LOAD_EXCEEDED_PENALTY = 100
+	NUM_PARTICLES = 8
 
-	def __init__(self, num_particles):
-		self.num_particles = num_particles
+	REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD = 0.75
+	NEARBY_CUSTOMERS_TO_CHECK = 15
+
+	def __init__(self, iterations):
+		self.iterations = iterations
 
 
+class Phenotype:
+	def __init__(self, genotype, routes, route_cost, route_penalties, load_penalties):
+		self.genotype = genotype
+		self.routes = routes
+		self.route_cost = route_cost
+		self.route_penalties = route_penalties
+		self.load_penalties = load_penalties
+
+	def local_search(self, config, optimal=False):
+		self.routes = two_opt(self.routes, 5 if not optimal else -1) # limit to 5 exchanges
+		self.route_cost, self.route_penalties = get_objective_value(self.routes, config)
+
+	@property
+	def penalties(self):
+		return self.route_penalties + self.load_penalties
+
+	@property
+	def obj_value(self):
+		return self.route_cost + self.penalties
+
+	def __str__(self):
+		return "Phenotype(route_cost=%s,penalties=%s)" % (self.route_cost, self.penalties)
 
 def pso(instance, rand, config):
 	assert isinstance(instance, Instance)
 	assert isinstance(config, Config)
 	assert isinstance(rand, random_module.Random)
 
-	population = list(create_starting_solution(instance, rand) for i in range(config.num_particles))
+	population = list(create_starting_solution(instance, rand) for i in range(config.NUM_PARTICLES))
 
 	pbest = list((i, sys.maxsize) for i in population) # best genotype + obj value
 
@@ -51,21 +81,24 @@ def pso(instance, rand, config):
 	# 2-dim vector for each starting location of each individual
 	individual_velocities = [[[0,0] for i in population[0] ] for j in population]
 
-	for it in range(30):
-
+	for it in range(config.iterations):
 		print("\n\nIt", it,"\n")
 
+		"""
 		print("pop: ", end="\n")
-		pprint(population)
+		pprint_list_of_list_of_floats(population)
 		print("vel: ", end="\n")
-		pprint(individual_velocities)
+		pprint_list_of_list_of_floats(individual_velocities)
 		print("pbest: ", end="\n")
-		pprint(pbest)
+		pprint(pbest, width=200)
+		#"""
 
 		# check solutions
-		for i, genotype in enumerate(population):
 
-			location_velocities = individual_velocities[i]
+		#if it != 0: import pdb ; pdb.set_trace()
+
+		for individual_id, genotype in enumerate(population):
+			location_velocities = individual_velocities[individual_id]
 
 			# apply velocities
 			for j, location in enumerate(genotype):
@@ -74,47 +107,61 @@ def pso(instance, rand, config):
 				  location[1] + location_velocities[j][1]
 				  )
 
-
 			# possibly test phenotype better by randomising construction
-			r = construct_routes(instance, genotype)
-			r_opt =  two_opt(r)
+			phenotype = construct_routes(instance, genotype, config)
+			phenotype.local_search(config)
 
-			print("Sol",i,"obj naked:", get_objective_value(r), "; obj opt:", get_objective_value(r_opt))
+			if phenotype.obj_value < pbest[individual_id][1]:
+				pbest[individual_id] = (genotype, phenotype.obj_value)
 
-			obj_val = get_objective_value(r_opt)
+				#print("\nNEW PBEST %s pen:%s\n" % (phenotype.obj_value, phenotype.penalties))
 
-			if obj_val < pbest[i][1]:
-				pbest[i] = (genotype, obj_val)
+				if phenotype.obj_value < gbest[1]:
+					gbest = (individual_id, phenotype.obj_value)
+					best_phenotype = phenotype
 
-				print("\nNEW PBEST\n")
+					print("\nNEW GBEST")
+					#import pdb ; pdb.set_trace()
+					best_phenotype.local_search(config, optimal=True)
 
-				if obj_val < pbest[gbest[0]][1]:
-					gbest = (i, obj_val)
-					best_phenotype = r_opt
+					print_routes(best_phenotype)
+					#show_routes(instance, best_phenotype)
 
-			# update velocities
-			for i, location_velocities in enumerate(individual_velocities):
-				individual = population[i]
-				gbest_sol = pbest[gbest[0]][0]
-				pbest_sol = pbest[i][0]
+		# update velocities
+		#if it == 8: import pdb ; pdb.set_trace()
+		for individual_id, location_velocities in enumerate(individual_velocities):
+			individual = population[individual_id]
+			gbest_sol = pbest[gbest[0]][0]
+			pbest_sol = pbest[individual_id][0]
 
-				#print('move to', pbest_sol, ' and ', gbest_sol)
+			#print('move to', pbest_sol, ' and ', gbest_sol)
 
-				accel = 0.3
-				# velocity is a 2-dim vector for each staring location
-				for j, velocity in enumerate(location_velocities):
+			accel =.2
+			accel_g = .3 * accel
+			accel_p = .2 * accel
 
-					velocity[0] += \
-						accel * rand.random() * (pbest_sol[j][0] - individual[j][0]) + \
-						accel * rand.random() * (gbest_sol[j][0] - individual[j][0])
+			# velocity is a 2-dim vector for each staring location
+			for loc_id, velocity in enumerate(location_velocities):
+				old_vel = velocity[:]
 
-					velocity[1] += \
-						accel * rand.random() * (pbest_sol[j][1] - individual[j][1]) + \
-						accel * rand.random() * (gbest_sol[j][1] - individual[j][1])
+				velocity[0] += \
+					accel_p * rand.random() * (pbest_sol[loc_id][0] - individual[loc_id][0]) + \
+					accel_g * rand.random() * (gbest_sol[loc_id][0] - individual[loc_id][0])
+
+				velocity[1] += \
+					accel_p * rand.random() * (pbest_sol[loc_id][1] - individual[loc_id][1]) + \
+					accel_g * rand.random() * (gbest_sol[loc_id][1] - individual[loc_id][1])
+
+				if individual_id == 0 and loc_id == 0:
+					print('accel ', (velocity[0]-old_vel[0], velocity[1]-old_vel[1]), ' to ', velocity)
+					pass
 
 
-		show_routes(instance, best_phenotype)
-		#print_routes(r_opt)
+		if False or it % 5 == 0 and it != 0:
+			#show_routes(instance, best_phenotype)
+			pass
+
+
 
 
 

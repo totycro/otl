@@ -23,6 +23,7 @@
 from collections import namedtuple
 import itertools
 
+from utils import dist
 
 class Instance:
 
@@ -40,7 +41,7 @@ class Instance:
 		if int(head[0]) != 2:
 			raise Exception("Not a MDVRP input file")
 
-		self.num_vehicles = int(head[1])
+		self.num_vehicles_per_depot = int(head[1])
 		self.num_customers = int(head[2])
 		self.num_depots = int(head[3])
 
@@ -80,7 +81,6 @@ class Instance:
 		else:
 			raise Exception("Garbage at end of file")
 
-
 		def all_positions():
 			for c in itertools.chain(self.customers, self.depots):
 				yield c.pos
@@ -88,6 +88,8 @@ class Instance:
 		self.min_point = (min(x[0] for x in all_positions()), min(x[1] for x in all_positions()))
 		self.max_point = (max(x[0] for x in all_positions()), max(x[1] for x in all_positions()))
 
+
+		self.diagonal_length = dist(self.min_point, self.max_point)
 
 
 		print(self)
@@ -98,11 +100,13 @@ class Instance:
 		s = ""
 		s += "Instance\t%s" % self.file
 		s += "\n"
-		s += "Vehicles\t%s" % self.num_vehicles
+		s += "Vehicles\t%s" % self.num_vehicles_per_depot
 		s += "\n"
 		s += "Customers\t%s" % self.num_customers
 		s += "\n"
 		s += "Depots\t\t%s" % self.num_depots
+		s += "\n"
+		s += "Sample dep\t%s" % str(self.depots[0])
 		s += "\n"
 		s += "Min/Max\t\t%s/%s" % ( self.min_point, self.max_point )
 		return s

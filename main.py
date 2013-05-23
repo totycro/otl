@@ -28,7 +28,7 @@ import time
 
 from instance import Instance
 from pso import pso, Config
-from gui import show_instance, show_routes
+from gui import show_instance
 
 
 
@@ -41,7 +41,6 @@ def test_domain():
 
 	rand = random.Random(2)
 
-
 	depots = _get_closest_depots(instance1, genotype)
 
 	assert depots[0].id == 0
@@ -51,9 +50,9 @@ def test_domain():
 
 	print('Passed.\n')
 
-	instance0 = Instance("instances/p13")
+	#instance0 = Instance("instances/p23")
 
-	pso(instance0, rand, Config(num_particles=3))
+	#pso(instance0, rand, Config())
 
 	"""
 	genotype = create_starting_solution(instance0, rand)
@@ -73,9 +72,18 @@ def test_domain():
 
 
 if __name__ == "__main__":
-	if len(sys.argv) == 1:
-		print("You need to specify an instance file.");
+	if len(sys.argv) < 2:
+		print("You need to specify an instance file.")
 		sys.exit(1)
+
+	if len(sys.argv) < 3:
+		print("You need to specify a rng seed.")
+		sys.exit(1)
+
+	if len(sys.argv) < 4:
+		iterations = 100
+	else:
+		iterations = int(sys.argv[3])
 
 	if '-t' in sys.argv or '--test' in sys.argv:
 		test_domain()
@@ -84,6 +92,10 @@ if __name__ == "__main__":
 	inputfile = sys.argv[1]
 
 	instance = Instance(inputfile)
+
+	rand = random.Random(sys.argv[2])
+
+	pso(instance, rand, Config(iterations=iterations))
 
 	#show_instance(instance)
 
