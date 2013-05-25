@@ -48,6 +48,16 @@ def show_routes(instance, phenotype):
 
 	root, gui = _show_instance(instance)
 	translate_point, inverse_translate_point = get_translate_point(instance)
+	for p in phenotype.genotype:
+		gui.vehicle_points.append( translate_point(p) )
+
+	_add_routes(instance, routes, gui)
+
+	_loop(root)
+
+
+def _add_routes(instance, routes, gui):
+	translate_point, inverse_translate_point = get_translate_point(instance)
 	for route_num, route in enumerate(routes):
 		route = route[:]
 		route.append(route[0])
@@ -56,19 +66,21 @@ def show_routes(instance, phenotype):
 				break
 			gui.edges.append( (translate_point(route[i].pos), translate_point(route[i+1].pos), route_num) )
 
-	for p in phenotype.genotype:
-		gui.vehicle_points.append( translate_point(p) )
 
 	gui.redraw()
 
-	_loop(root)
 
-def show_genotypes(instance, genotypes):
+def show_genotypes(instance, genotypes, routes=None):
+	print(routes)
 	root, gui = _show_instance(instance)
 	translate_point, inverse_translate_point = get_translate_point(instance)
 	#import pdb ; pdb.set_trace()
 	gui.genotype_point_sets.extend([[translate_point(p) for p in x] for x in genotypes])
 	gui.redraw()
+
+	if routes:
+		_add_routes(instance, routes, gui)
+
 	_loop(root)
 
 

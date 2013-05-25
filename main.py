@@ -70,6 +70,12 @@ def test_domain():
 	"""
 
 
+def check_instance(outfile, instance_file, rand, iterations):
+	phen = pso(Instance(instance_file), rand, Config(iterations))
+	print("%s: %.2f (pen: %.2f, route: %.2f): %s" % \
+	      (instance_file, phen.obj_value, phen.penalties, phen.route_cost, [[r.id for r in route] for route in phen.routes]), file=outfile)
+	outfile.flush()
+
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2:
@@ -80,8 +86,11 @@ if __name__ == "__main__":
 		print("You need to specify a rng seed.")
 		sys.exit(1)
 
+	seed = sys.argv[2]
+	rand = random.Random(seed)
+
 	if len(sys.argv) < 4:
-		iterations = 100
+		iterations = 20
 	else:
 		iterations = int(sys.argv[3])
 
@@ -89,13 +98,27 @@ if __name__ == "__main__":
 		test_domain()
 		sys.exit(0)
 
+
+	if '-a' in sys.argv:
+		outfile = open("test.out", "a")
+		outfile.write("Running tests (seed: %s, it: %d)\n" % (seed, iterations) )
+		outfile.flush()
+		#for inst in ("instances/p0%d" % d for d in ( 1, 2, 3, 4, 5 )):
+		for inst in ("instances/p0%d" % d for d in range(10)):
+			check_instance(outfile, inst, rand, iterations)
+		for inst in ("instances/p0%d" % d for d in range(10, 24)):
+			check_instance(outfile, inst, rand, iterations)
+		sys.exit(0)
+
 	inputfile = sys.argv[1]
 
 	instance = Instance(inputfile)
 
-	rand = random.Random(sys.argv[2])
+	#pso(instance, rand, Config(iterations=iterations))
 
-	pso(instance, rand, Config(iterations=iterations))
+
+
 
 	#show_instance(instance)
+
 

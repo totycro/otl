@@ -23,6 +23,7 @@ import sys
 from pprint import pprint
 
 import random as random_module
+import multiprocessing
 
 from instance import Instance
 from domainalgo import create_starting_solution, get_objective_value, construct_routes, two_opt, print_routes
@@ -37,7 +38,7 @@ class Config:
 	NUM_PARTICLES = 20
 
 	REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD = 0.75
-	NEARBY_CUSTOMERS_TO_CHECK = 140
+	NEARBY_CUSTOMERS_TO_CHECK = 80
 
 	def __init__(self, iterations):
 		self.iterations = iterations
@@ -81,6 +82,10 @@ def pso(instance, rand, config):
 	# 2-dim vector for each starting location of each individual
 	individual_velocities = [[[0,0] for i in population[0] ] for j in population]
 
+	phenos_debug = []
+
+	iteration_of_last_improvment = -1
+
 	for it in range(config.iterations):
 		print("\n\nIt", it,"\n")
 
@@ -97,19 +102,63 @@ def pso(instance, rand, config):
 
 		#if it != 0: import pdb ; pdb.set_trace()
 
-		for individual_id, genotype in enumerate(population):
-			location_velocities = individual_velocities[individual_id]
+		do_threading = True
+		threading_debug = False
 
-			# apply velocities
-			for j, location in enumerate(genotype):
-				genotype[j] = (
-				  location[0] + location_velocities[j][0],
-				  location[1] + location_velocities[j][1]
-				  )
+		phenotypes = []
+		if do_threading:
+
+			proc_num = multiprocessing.cpu_count()
+
+			queues = list(multiprocessing.Queue() for i in range(proc_num))
+
+			def f(queue, instance, genotypes, config):
+				for genotype in genotypes:
+					phenotype = construct_routes(instance, genotype, config)
+					phenotype.local_search(config)
+					queue.put(phenotype)
+				if threading_debug: print('fini')
+
+			procs = []
+
+			sep = int((len(population)+1)/proc_num)
+
+			print(sep)
+			for thread in range(proc_num):
+
+				proc = multiprocessing.Process(target=f, args=(queues[thread], instance, population[thread*sep : (thread+1)*sep], config))
+
+				proc.start()
+				procs.append(proc)
+
+			for proc in procs:
+				if threading_debug: print ("wait", proc.name)
+				proc.join()
+				if threading_debug: print ("finish", proc.name)
+
+
+
+			for queue in queues:
+				try:
+					while True:
+						phenotypes.append(queue.get(block=False))
+				except multiprocessing.queues.Empty:
+					pass
+
+			if threading_debug: print(len(population), len(phenotypes))
+
+
+		phenos_debug = phenotypes[:]
+
+
+		for individual_id, genotype in enumerate(population):
 
 			# possibly test phenotype better by randomising construction
-			phenotype = construct_routes(instance, genotype, config)
-			phenotype.local_search(config)
+			if do_threading:
+				phenotype = phenotypes[individual_id]
+			else:
+				phenotype = construct_routes(instance, genotype, config)
+				phenotype.local_search(config)
 
 			if phenotype.obj_value < pbest[individual_id][1]:
 				pbest[individual_id] = (genotype, phenotype.obj_value)
@@ -126,6 +175,7 @@ def pso(instance, rand, config):
 
 					print_routes(best_phenotype)
 					#show_routes(instance, best_phenotype)
+					iteration_of_last_improvment = it
 
 		"""
 		print('invididuals:')
@@ -166,9 +216,34 @@ def pso(instance, rand, config):
 					print('accel ', (velocity[0]-old_vel[0], velocity[1]-old_vel[1]), ' to ', velocity)
 					pass
 
+		for individual_id, genotype in enumerate(population):
+			location_velocities = individual_velocities[individual_id]
+
+			# apply velocities
+			for j, location in enumerate(genotype):
+				genotype[j] = (
+				  location[0] + location_velocities[j][0],
+				  location[1] + location_velocities[j][1]
+				  )
+
+
 
 		if False or it % 5 == 0 and it != 0:
-			show_genotypes(instance, population)
-			show_routes(instance, best_phenotype)
+			#show_genotypes(instance, population)
+			#show_routes(instance, best_phenotype)
+
+			"""
+			first_points =  list(  [i[0]] for i in population )
+			print("\nbest:")
+			pprint_list_of_floats(best_phenotype.genotype)
+			#print(best_phenotype.genotype)
+			show_genotypes(instance, first_points, routes=[i.routes[0] for i in phenos_debug]) # type abuse
+			"""
 			pass
+
+
+	print("best found:")
+	print_routes(best_phenotype)
+	print("iteration of last improvement: %d" % iteration_of_last_improvment)
+	return best_phenotype
 

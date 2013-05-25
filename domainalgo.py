@@ -21,6 +21,7 @@
 
 from pprint import pprint
 import heapq
+import itertools
 import sys
 from scipy.spatial import cKDTree as KDTree
 
@@ -57,10 +58,25 @@ def get_objective_value(routes, config):
 def create_starting_solution(instance, rand):
 	"""Creates initial genotypes"""
 	assert isinstance(instance, Instance)
-	return list(
-	  ( rand.randint(instance.min_point[0], instance.max_point[0]+1),
-	    rand.randint(instance.min_point[1], instance.max_point[1]) )
-	  for i in range(instance.num_vehicles_per_depot * instance.num_depots) )
+
+	def get_positions_for_depot(depot):
+		other_depots = instance.depots[:]
+		other_depots.remove(depot)
+		#nearest_depot_dist, nearest_depot = min( (dep_dist, other_dep) for (dep_dist, other_dep) in list( ( dist(depot.pos, o.pos), o ) for o in other_depots ) )
+
+		nearest_depot_dist_x = min( abs(depot.pos[0] - d.pos[0]) for d in other_depots )
+		nearest_depot_dist_y = min( abs(depot.pos[1] - d.pos[1]) for d in other_depots )
+		for i in range(instance.num_vehicles_per_depot):
+			yield (depot.pos[0] + (rand.random() - 1) * nearest_depot_dist_x, \
+			       depot.pos[1] + (rand.random() - 1) * nearest_depot_dist_y)
+
+
+	ret = []
+
+	for d in instance.depots:
+		ret.extend( (pos for pos in get_positions_for_depot(d) ) )
+
+	return ret
 
 
 
@@ -113,7 +129,12 @@ def construct_routes(instance, genotype, config):
 
 		# get 10 nearest points from route
 		# TODO: also from base point?
-		distances, customer_indices = data.kdtree.query(route[-1].pos, min(config.NEARBY_CUSTOMERS_TO_CHECK, len(data.kdtree_customers)))
+		num_nodes = min(config.NEARBY_CUSTOMERS_TO_CHECK, len(data.kdtree_customers))
+		distances, customer_indices = data.kdtree.query(route[-1].pos, num_nodes)
+
+		if num_nodes == 1: # return format different, fix it
+			distances = [ distances ]
+			customer_indices = [ customer_indices ]
 
 		#print(customer_indices)
 		dead_customers = 0

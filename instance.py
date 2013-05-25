@@ -25,10 +25,18 @@ import itertools
 
 from utils import dist
 
+Depot = namedtuple("Depot", ["id", "pos", "max_route_duration", "max_vehicle_load"])
+
+
+Customer = namedtuple("Customer", ["id", "pos", "service_duration", "demand" ])
+
 class Instance:
 
 	def __init__(self, file):
 		self.file = file
+
+		depot_type = Depot
+		customer_type = Customer
 
 		f = open(file, "r")
 
@@ -46,14 +54,12 @@ class Instance:
 		self.num_depots = int(head[3])
 
 		self.depots= []
-		depot_type = namedtuple("Depot", ["id", "pos", "max_route_duration", "max_vehicle_load"])
 
 		for d in range(self.num_depots):
 			line = get_next_line_data()
 			# line is D Q
 			self.depots.append( {"pos": None, "max_route_duration": int(line[0]), "max_vehicle_load": int(line[1])} )
 
-		customer_type = namedtuple("Customer", ["id", "pos", "service_duration", "demand" ])
 
 		self.customers = []
 
@@ -91,9 +97,7 @@ class Instance:
 
 		self.diagonal_length = dist(self.min_point, self.max_point)
 
-
 		print(self)
-
 
 
 	def __str__(self):
