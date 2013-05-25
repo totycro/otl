@@ -112,9 +112,11 @@ def pso(instance, rand, config):
 
 			queues = list(multiprocessing.Queue() for i in range(proc_num))
 
-			def f(queue, instance, genotypes, config):
+			def f(queue, instance, genotypes, config, rand_state):
+				rand = random_module.Random()
+				rand.setstate(rand_state)
 				for genotype in genotypes:
-					phenotype = construct_routes(instance, genotype, config)
+					phenotype = construct_routes(instance, genotype, config, rand)
 					phenotype.local_search(config)
 					queue.put(phenotype)
 				if threading_debug: print('fini')
@@ -122,11 +124,11 @@ def pso(instance, rand, config):
 			procs = []
 
 			sep = int((len(population)+1)/proc_num)
+			if threading_debug: print('sep:', sep)
 
-			print(sep)
 			for thread in range(proc_num):
 
-				proc = multiprocessing.Process(target=f, args=(queues[thread], instance, population[thread*sep : (thread+1)*sep], config))
+				proc = multiprocessing.Process(target=f, args=(queues[thread], instance, population[thread*sep : (thread+1)*sep], config, rand.getstate()))
 
 				proc.start()
 				procs.append(proc)
@@ -135,8 +137,6 @@ def pso(instance, rand, config):
 				if threading_debug: print ("wait", proc.name)
 				proc.join()
 				if threading_debug: print ("finish", proc.name)
-
-
 
 			for queue in queues:
 				try:
@@ -157,7 +157,7 @@ def pso(instance, rand, config):
 			if do_threading:
 				phenotype = phenotypes[individual_id]
 			else:
-				phenotype = construct_routes(instance, genotype, config)
+				phenotype = construct_routes(instance, genotype, config, rand)
 				phenotype.local_search(config)
 
 			if phenotype.obj_value < pbest[individual_id][1]:
@@ -196,7 +196,7 @@ def pso(instance, rand, config):
 
 			#print('move to', pbest_sol, ' and ', gbest_sol)
 
-			accel = 0.4
+			accel = 1
 			accel_g = .3 * accel
 			accel_p = .2 * accel
 
@@ -228,17 +228,15 @@ def pso(instance, rand, config):
 
 
 
-		if False or it % 5 == 0 and it != 0:
+		if True or it % 5 == 0 and it != 0:
 			#show_genotypes(instance, population)
 			#show_routes(instance, best_phenotype)
 
-			"""
 			first_points =  list(  [i[0]] for i in population )
 			print("\nbest:")
 			pprint_list_of_floats(best_phenotype.genotype)
 			#print(best_phenotype.genotype)
 			show_genotypes(instance, first_points, routes=[i.routes[0] for i in phenos_debug]) # type abuse
-			"""
 			pass
 
 

@@ -28,7 +28,6 @@ from scipy.spatial import cKDTree as KDTree
 from instance import Instance
 from utils import dist, dist_squared
 
-
 def print_routes(phenotype):
 	routes = phenotype.routes
 	print("Routes (obj:%s; pen:%s):"%(phenotype.route_cost, phenotype.penalties))
@@ -59,6 +58,20 @@ def create_starting_solution(instance, rand):
 	"""Creates initial genotypes"""
 	assert isinstance(instance, Instance)
 
+	# old code :
+
+	"""
+	return list(
+		( rand.randint(instance.min_point[0], instance.max_point[0]+1),
+			rand.randint(instance.min_point[1], instance.max_point[1]) )
+	return list(
+		for i in range(instance.num_vehicles_per_depot * instance.num_depots) )
+	"""
+
+
+	# new code:
+
+
 	def get_positions_for_depot(depot):
 		other_depots = instance.depots[:]
 		other_depots.remove(depot)
@@ -68,7 +81,7 @@ def create_starting_solution(instance, rand):
 		nearest_depot_dist_y = min( abs(depot.pos[1] - d.pos[1]) for d in other_depots )
 		for i in range(instance.num_vehicles_per_depot):
 			yield (depot.pos[0] + (rand.random() - 1) * nearest_depot_dist_x, \
-			       depot.pos[1] + (rand.random() - 1) * nearest_depot_dist_y)
+						 depot.pos[1] + (rand.random() - 1) * nearest_depot_dist_y)
 
 
 	ret = []
@@ -80,7 +93,7 @@ def create_starting_solution(instance, rand):
 
 
 
-def construct_routes(instance, genotype, config):
+def construct_routes(instance, genotype, config, rand):
 	"""Create phenotype from genotype."""
 	assert isinstance(instance, Instance)
 
@@ -183,7 +196,7 @@ def construct_routes(instance, genotype, config):
 			heapq.heappush(l, (dist_value, route_dist, route_penalty, load_penalty, vehicle, customer)) # add vehicle id, makes it easier later
 
 		if float(dead_customers)/config.NEARBY_CUSTOMERS_TO_CHECK > \
-				config.REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD:
+			 config.REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD:
 			data.rebuild_kdtree()
 			return calculate_neighbors_per_vehicle(vehicle)
 
@@ -199,10 +212,35 @@ def construct_routes(instance, genotype, config):
 	load_penalties = 0
 
 	while data.customers_to_visit:
-		candidate = min([i[0] for i in neighbors_per_vehicle])
+		candidate = min((i[0] for i in neighbors_per_vehicle))
+
+		_, _, _, _, vehicle, _ = candidate
+
+		# candidate is from vehicle vehicle
+		assert neighbors_per_vehicle[vehicle][0] == candidate
+
+		# choose nth elem (randomisation)
+		elem = 0
+		while rand.random() > 0.6:
+			elem += 1
+		elem = min(elem, len(neighbors_per_vehicle[vehicle]))
+
+		removed = []
+		for i in range(elem-1):
+			removed.append(heapq.heappop(neighbors_per_vehicle[vehicle]))
+
+		candidate = heapq.heappop(neighbors_per_vehicle[vehicle])
+
+		for rem in removed:
+			heapq.heappush(neighbors_per_vehicle[vehicle], rem)
+
 
 		_, route_dist, route_penalty, load_penalty, vehicle, customer = candidate
+
 		neighbors_per_vehicle[vehicle] = calculate_neighbors_per_vehicle(vehicle)
+
+		#print('choose', candidate)
+
 		# customer might already have been visited by other vehicle, we don't drop these values from other lists
 		if customer not in data.customers_visited:
 			# use it
@@ -217,6 +255,8 @@ def construct_routes(instance, genotype, config):
 			vehicle_loads[vehicle] += customer.demand
 
 			vehicle_route_duration[vehicle] += route_dist
+		c2 = min((i[0] for i in neighbors_per_vehicle))
+		#print('c2', c2)
 
 	for vehicle, route in enumerate(routes):
 		route.append(route[0])
@@ -270,7 +310,7 @@ def two_opt(routes, limit):
 				v_2 = route[j+1].pos
 
 				if ( dist_squared(u_1, u_2) + dist_squared(v_1, v_2) ) > \
-				   ( dist_squared(u_1, v_1) + dist_squared(u_2, v_2) ):
+					 ( dist_squared(u_1, v_1) + dist_squared(u_2, v_2) ):
 					# is better, put v_1 after u_1, then in reverse order until u_2, then v_2
 
 					# TODO: do in place?
@@ -280,5 +320,4 @@ def two_opt(routes, limit):
 		return route # nothing found
 
 	return list(do_route(route, limit) for route in routes)
-
 
