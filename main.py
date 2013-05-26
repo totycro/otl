@@ -100,14 +100,15 @@ if __name__ == "__main__":
 
 
 	if '-a' in sys.argv:
+		iterations = 80
 		outfile = open("test.out", "a")
 		outfile.write("Running tests (seed: %s, it: %d)\n" % (seed, iterations) )
 		outfile.flush()
 		#for inst in ("instances/p0%d" % d for d in ( 1, 2, 3, 4, 5 )):
 		for inst in ("instances/p0%d" % d for d in range(10)):
-			outfile.write("cur rand state: %s"% str(rand.getstate()))
+			#outfile.write("cur rand state: %s"% str(rand.getstate()))
 			check_instance(outfile, inst, rand, iterations)
-		for inst in ("instances/p0%d" % d for d in range(10, 24)):
+		for inst in ("instances/p%d" % d for d in range(10, 24)):
 			check_instance(outfile, inst, rand, iterations)
 		sys.exit(0)
 

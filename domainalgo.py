@@ -221,9 +221,10 @@ def construct_routes(instance, genotype, config, rand):
 
 		# choose nth elem (randomisation)
 		elem = 0
-		while rand.random() > 0.6:
+		while rand.random() > 0.4:
 			elem += 1
 		elem = min(elem, len(neighbors_per_vehicle[vehicle]))
+		#print("elem", elem)
 
 		removed = []
 		for i in range(elem-1):

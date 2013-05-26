@@ -35,7 +35,7 @@ from utils import pprint_list_of_list_of_floats as pll, pprint_list_of_floats as
 class Config:
 	DURATION_EXCEEDED_PENALTY = 1000
 	LOAD_EXCEEDED_PENALTY = 1000
-	NUM_PARTICLES = 20
+	NUM_PARTICLES = 10
 
 	REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD = 0.75
 	NEARBY_CUSTOMERS_TO_CHECK = 80
@@ -80,14 +80,18 @@ def pso(instance, rand, config):
 	best_phenotype = None
 
 	# 2-dim vector for each starting location of each individual
-	individual_velocities = [[[0,0] for i in population[0] ] for j in population]
+	start_velocity_max = 3
+	individual_velocities = [[[rand.random()*start_velocity_max*2-start_velocity_max,
+	                           rand.random()*start_velocity_max*2-start_velocity_max] for i in population[0] ] for j in population]
 
 	phenos_debug = []
 
 	iteration_of_last_improvment = -1
 
 	for it in range(config.iterations):
-		print("\n\nIt", it,"\n")
+
+		#print(individual_velocities[0])
+		print("\n\nIt", it)
 
 		"""
 		print("pop: ", end="\n")
@@ -97,6 +101,11 @@ def pso(instance, rand, config):
 		print("pbest: ", end="\n")
 		pprint(pbest, width=200)
 		#"""
+
+		print("pop: ", end="\n")
+		pprint_list_of_list_of_floats(population)
+		print("vel: ", end="\n")
+		pprint_list_of_list_of_floats(individual_velocities)
 
 		# check solutions
 
@@ -114,36 +123,44 @@ def pso(instance, rand, config):
 
 			def f(queue, instance, genotypes, config, rand_state):
 				rand = random_module.Random()
-				rand.setstate(rand_state)
+				#rand.setstate(rand_state)
 				for genotype in genotypes:
 					phenotype = construct_routes(instance, genotype, config, rand)
 					phenotype.local_search(config)
 					queue.put(phenotype)
-				if threading_debug: print('fini')
+				if threading_debug: print('fini', multiprocessing.current_process().name)
 
 			procs = []
 
 			sep = int((len(population)+1)/proc_num)
-			if threading_debug: print('sep:', sep)
+			if threading_debug: print('sep:', sep, 'pop', len(population), 'proc', proc_num)
+
+			lens = []
 
 			for thread in range(proc_num):
 
-				proc = multiprocessing.Process(target=f, args=(queues[thread], instance, population[thread*sep : (thread+1)*sep], config, rand.getstate()))
+				todo = population[thread*sep : (thread+1)*sep]
 
+				proc = multiprocessing.Process(target=f, args=(queues[thread], instance, todo,  config, rand.getstate()))
+
+				lens.append(len(todo))
+
+				if threading_debug: print('start', proc.name)
 				proc.start()
 				procs.append(proc)
 
+			"""
 			for proc in procs:
 				if threading_debug: print ("wait", proc.name)
 				proc.join()
 				if threading_debug: print ("finish", proc.name)
+			"""
 
-			for queue in queues:
-				try:
-					while True:
-						phenotypes.append(queue.get(block=False))
-				except multiprocessing.queues.Empty:
-					pass
+			# read exactly number of elements, other version can deadlock
+			for i, queue in enumerate(queues):
+				for j in range(lens[i]):
+					if threading_debug: print("read", i, j)
+					phenotypes.append(queue.get(block=True))
 
 			if threading_debug: print(len(population), len(phenotypes))
 
@@ -196,7 +213,7 @@ def pso(instance, rand, config):
 
 			#print('move to', pbest_sol, ' and ', gbest_sol)
 
-			accel = 1
+			accel = .5
 			accel_g = .3 * accel
 			accel_p = .2 * accel
 
@@ -213,7 +230,7 @@ def pso(instance, rand, config):
 					accel_g * rand.random() * (gbest_sol[loc_id][1] - individual[loc_id][1])
 
 				if individual_id == 0 and loc_id == 0:
-					print('accel ', (velocity[0]-old_vel[0], velocity[1]-old_vel[1]), ' to ', velocity)
+					#print('accel ', (velocity[0]-old_vel[0], velocity[1]-old_vel[1]), ' to ', velocity)
 					pass
 
 		for individual_id, genotype in enumerate(population):
@@ -228,15 +245,17 @@ def pso(instance, rand, config):
 
 
 
-		if True or it % 5 == 0 and it != 0:
+		if False or it % 5 == 0 and it != 0:
 			#show_genotypes(instance, population)
 			#show_routes(instance, best_phenotype)
 
+			"""
 			first_points =  list(  [i[0]] for i in population )
 			print("\nbest:")
 			pprint_list_of_floats(best_phenotype.genotype)
 			#print(best_phenotype.genotype)
 			show_genotypes(instance, first_points, routes=[i.routes[0] for i in phenos_debug]) # type abuse
+			"""
 			pass
 
 
