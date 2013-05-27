@@ -51,6 +51,7 @@ def show_routes(instance, phenotype):
 	for p in phenotype.genotype:
 		gui.vehicle_points.append( translate_point(p) )
 
+	gui.redraw()
 	_add_routes(instance, routes, gui)
 
 	_loop(root)

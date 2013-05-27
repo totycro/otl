@@ -33,27 +33,6 @@ from gui import show_instance
 
 
 def test_domain():
-	instance1 = Instance("instances/p01")
-	genotype = [ (0,0), (40, 20), (20, 40), (50, 50) ]
-
-	print("\nRunning test_domain..")
-	from domainalgo import construct_routes, _get_closest_depots, create_starting_solution, get_objective_value, two_opt, print_routes
-
-	rand = random.Random(2)
-
-	depots = _get_closest_depots(instance1, genotype)
-
-	assert depots[0].id == 0
-	assert depots[1].id == 2
-	assert depots[2].id == 1
-	assert depots[3].id == 3
-
-	print('Passed.\n')
-
-	#instance0 = Instance("instances/p23")
-
-	#pso(instance0, rand, Config())
-
 	"""
 	genotype = create_starting_solution(instance0, rand)
 
@@ -94,15 +73,11 @@ if __name__ == "__main__":
 	else:
 		iterations = int(sys.argv[3])
 
-	if '-t' in sys.argv or '--test' in sys.argv:
-		test_domain()
-		sys.exit(0)
-
-
 	if '-a' in sys.argv:
 		iterations = 80
 		outfile = open("test.out", "a")
 		outfile.write("Running tests (seed: %s, it: %d)\n" % (seed, iterations) )
+		outfile.write("Config: %s\n" % (Config.__dict__) )
 		outfile.flush()
 		#for inst in ("instances/p0%d" % d for d in ( 1, 2, 3, 4, 5 )):
 		for inst in ("instances/p0%d" % d for d in range(10)):

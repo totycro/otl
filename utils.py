@@ -55,3 +55,5 @@ def pprint_list_of_floats(l1):
 		print("]", end="")
 		print(",", end="\n");
 
+
+#def print_avg_velocity(velocities)

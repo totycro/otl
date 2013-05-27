@@ -24,6 +24,7 @@ import heapq
 import itertools
 import sys
 from scipy.spatial import cKDTree as KDTree
+import random as random_module
 
 from instance import Instance
 from utils import dist, dist_squared
@@ -64,7 +65,6 @@ def create_starting_solution(instance, rand):
 	return list(
 		( rand.randint(instance.min_point[0], instance.max_point[0]+1),
 			rand.randint(instance.min_point[1], instance.max_point[1]) )
-	return list(
 		for i in range(instance.num_vehicles_per_depot * instance.num_depots) )
 	"""
 
@@ -77,11 +77,14 @@ def create_starting_solution(instance, rand):
 		other_depots.remove(depot)
 		#nearest_depot_dist, nearest_depot = min( (dep_dist, other_dep) for (dep_dist, other_dep) in list( ( dist(depot.pos, o.pos), o ) for o in other_depots ) )
 
-		nearest_depot_dist_x = min( abs(depot.pos[0] - d.pos[0]) for d in other_depots )
-		nearest_depot_dist_y = min( abs(depot.pos[1] - d.pos[1]) for d in other_depots )
+		#nearest_depot_dist_x = min( abs(depot.pos[0] - d.pos[0]) for d in other_depots )
+		#nearest_depot_dist_y = min( abs(depot.pos[1] - d.pos[1]) for d in other_depots )
+
+		spread_x = spread_y = instance.diagonal_length / 4
+
 		for i in range(instance.num_vehicles_per_depot):
-			yield (depot.pos[0] + (rand.random() - 1) * nearest_depot_dist_x, \
-						 depot.pos[1] + (rand.random() - 1) * nearest_depot_dist_y)
+			yield (depot.pos[0] + (rand.random() - 1) * spread_x, \
+						 depot.pos[1] + (rand.random() - 1) * spread_y)
 
 
 	ret = []
@@ -93,14 +96,20 @@ def create_starting_solution(instance, rand):
 
 
 
-def construct_routes(instance, genotype, config, rand):
+def construct_routes(instance, genotype, config, seed, debug=False):
 	"""Create phenotype from genotype."""
 	assert isinstance(instance, Instance)
+
+	rand = random_module.Random(seed)
 
 	# genotype contains base points
 
 	# find closest depots
-	vehicle_depots = _get_closest_depots(instance, genotype)
+	#vehicle_depots = _get_closest_depots(instance, genotype)
+	vehicle_depots = []
+	for d in instance.depots:
+		for v in range(instance.num_vehicles_per_depot):
+			vehicle_depots.append(d)
 
 	routes = list([i] for i in vehicle_depots ) # list of routes with starting state
 
@@ -140,7 +149,7 @@ def construct_routes(instance, genotype, config, rand):
 		#print('veh ', i, route[-1], genotype[i])
 		l = []
 
-		# get 10 nearest points from route
+		# get n nearest points from route
 		# TODO: also from base point?
 		num_nodes = min(config.NEARBY_CUSTOMERS_TO_CHECK, len(data.kdtree_customers))
 		distances, customer_indices = data.kdtree.query(route[-1].pos, num_nodes)
@@ -153,7 +162,7 @@ def construct_routes(instance, genotype, config, rand):
 		dead_customers = 0
 
 		for customer_index in range(len(customer_indices)):
-			customer = data.kdtree_customers[customer_index]
+			customer = data.kdtree_customers[ customer_indices[customer_index] ]
 
 			if customer in data.customers_visited:
 				dead_customers += 1
@@ -192,6 +201,7 @@ def construct_routes(instance, genotype, config, rand):
 						route_penalty += overflow * config.DURATION_EXCEEDED_PENALTY
 
 
+			#if debug: import pdb ; pdb.set_trace()
 			dist_value = route_dist + dist(genotype[vehicle], customer.pos) + load_penalty + route_penalty
 			heapq.heappush(l, (dist_value, route_dist, route_penalty, load_penalty, vehicle, customer)) # add vehicle id, makes it easier later
 
@@ -221,24 +231,23 @@ def construct_routes(instance, genotype, config, rand):
 
 		# choose nth elem (randomisation)
 		elem = 0
-		while rand.random() > 0.4:
+		while rand.random() > config.CHOOSE_BEST_NEIGHBOR_PROBABILTY:
 			elem += 1
 		elem = min(elem, len(neighbors_per_vehicle[vehicle]))
+		elem = 0
 		#print("elem", elem)
 
 		removed = []
 		for i in range(elem-1):
 			removed.append(heapq.heappop(neighbors_per_vehicle[vehicle]))
 
+		#if debug: import pdb ; pdb.set_trace()
 		candidate = heapq.heappop(neighbors_per_vehicle[vehicle])
 
 		for rem in removed:
 			heapq.heappush(neighbors_per_vehicle[vehicle], rem)
 
-
 		_, route_dist, route_penalty, load_penalty, vehicle, customer = candidate
-
-		neighbors_per_vehicle[vehicle] = calculate_neighbors_per_vehicle(vehicle)
 
 		#print('choose', candidate)
 
@@ -256,9 +265,17 @@ def construct_routes(instance, genotype, config, rand):
 			vehicle_loads[vehicle] += customer.demand
 
 			vehicle_route_duration[vehicle] += route_dist
-		c2 = min((i[0] for i in neighbors_per_vehicle))
-		#print('c2', c2)
 
+			if debug:
+				from gui import show_routes
+				from pso import Phenotype # import loop
+				print(elem)
+				show_routes(instance, Phenotype(genotype, routes, sum(vehicle_route_duration), route_penalties, load_penalties, seed))
+
+		# recalculate neighbors after route has been changed
+		neighbors_per_vehicle[vehicle] = calculate_neighbors_per_vehicle(vehicle)
+
+	# final step
 	for vehicle, route in enumerate(routes):
 		route.append(route[0])
 
@@ -275,11 +292,12 @@ def construct_routes(instance, genotype, config, rand):
 				route_penalties += overflow * config.DURATION_EXCEEDED_PENALTY
 
 	from pso import Phenotype # import loop
-	return Phenotype(genotype, routes, sum(vehicle_route_duration), route_penalties, load_penalties)
+	return Phenotype(genotype, routes, sum(vehicle_route_duration), route_penalties, load_penalties, seed)
 
 
 def _get_closest_depots(instance, genotype):
 	"""Returns the closest depots for the genotype values. Currently unrandomized."""
+	raise RuntimeError("don't use anymore")
 	closest_depots=[]
 
 	for vehicle_base in genotype:

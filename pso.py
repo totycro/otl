@@ -40,17 +40,20 @@ class Config:
 	REBUILD_KDTREE_DEAD_CUSTOMERS_THRESHOLD = 0.75
 	NEARBY_CUSTOMERS_TO_CHECK = 80
 
+	CHOOSE_BEST_NEIGHBOR_PROBABILTY = 0.6
+
 	def __init__(self, iterations):
 		self.iterations = iterations
 
 
 class Phenotype:
-	def __init__(self, genotype, routes, route_cost, route_penalties, load_penalties):
+	def __init__(self, genotype, routes, route_cost, route_penalties, load_penalties, seed):
 		self.genotype = genotype
 		self.routes = routes
 		self.route_cost = route_cost
 		self.route_penalties = route_penalties
 		self.load_penalties = load_penalties
+		self.seed = seed
 
 	def local_search(self, config, optimal=False):
 		self.routes = two_opt(self.routes, 20 if not optimal else -1) # limit to 5 exchanges
@@ -73,6 +76,8 @@ def pso(instance, rand, config):
 	assert isinstance(rand, random_module.Random)
 
 	population = list(create_starting_solution(instance, rand) for i in range(config.NUM_PARTICLES))
+	print("Population")
+	pll(population)
 
 	pbest = list((i, sys.maxsize) for i in population) # best genotype + obj value
 
@@ -93,19 +98,12 @@ def pso(instance, rand, config):
 		#print(individual_velocities[0])
 		print("\n\nIt", it)
 
-		"""
 		print("pop: ", end="\n")
 		pprint_list_of_list_of_floats(population)
 		print("vel: ", end="\n")
 		pprint_list_of_list_of_floats(individual_velocities)
-		print("pbest: ", end="\n")
-		pprint(pbest, width=200)
-		#"""
-
-		print("pop: ", end="\n")
-		pprint_list_of_list_of_floats(population)
-		print("vel: ", end="\n")
-		pprint_list_of_list_of_floats(individual_velocities)
+		#print("pbest: ", pbe, end="\n")
+		#pprint(pbest, width=200)
 
 		# check solutions
 
@@ -123,9 +121,9 @@ def pso(instance, rand, config):
 
 			def f(queue, instance, genotypes, config, rand_state):
 				rand = random_module.Random()
-				#rand.setstate(rand_state)
+				rand.setstate(rand_state)
 				for genotype in genotypes:
-					phenotype = construct_routes(instance, genotype, config, rand)
+					phenotype = construct_routes(instance, genotype, config, rand.random())
 					phenotype.local_search(config)
 					queue.put(phenotype)
 				if threading_debug: print('fini', multiprocessing.current_process().name)
@@ -174,7 +172,7 @@ def pso(instance, rand, config):
 			if do_threading:
 				phenotype = phenotypes[individual_id]
 			else:
-				phenotype = construct_routes(instance, genotype, config, rand)
+				phenotype = construct_routes(instance, genotype, config, rand.random())
 				phenotype.local_search(config)
 
 			if phenotype.obj_value < pbest[individual_id][1]:
@@ -190,8 +188,13 @@ def pso(instance, rand, config):
 					#import pdb ; pdb.set_trace()
 					best_phenotype.local_search(config, optimal=True)
 
+					print("Population")
+					pll(population)
 					print_routes(best_phenotype)
-					#show_routes(instance, best_phenotype)
+					show_routes(instance, best_phenotype)
+
+					construct_routes(instance, phenotype.genotype, config, phenotype.seed, debug=True)
+
 					iteration_of_last_improvment = it
 
 		"""
@@ -245,7 +248,7 @@ def pso(instance, rand, config):
 
 
 
-		if False or it % 5 == 0 and it != 0:
+		if True or it % 5 == 0 and it != 0:
 			#show_genotypes(instance, population)
 			#show_routes(instance, best_phenotype)
 
